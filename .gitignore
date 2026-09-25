@@ -29,9 +29,6 @@ temp/
 coverage/
 .nyc_output/
 
-# TypeScript
-*.tsbuildinfo
-
 # OS files
 .DS_Store
 Thumbs.db
