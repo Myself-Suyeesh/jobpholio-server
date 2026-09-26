@@ -1,23 +1,26 @@
-import { Request, Response, NextFunction } from 'express';
-import { verifyAccessToken } from '../modules/auth/jwt.utils.js';
-import { UnauthorizedError } from '../shared/errors/app.error.js';
+import { Request, Response, NextFunction } from "express";
+import { verifyAccessToken } from "../modules/auth/jwt.utils.js";
+import { UnauthorizedError } from "../shared/errors/app.error.js";
 
 /**
  * Authentication Middleware.
- * Extracts Bearer Access Token from Authorization header, verifies signature & expiration,
- * and attaches authenticated user claims to `req.user`.
+ * verifies signature & expiration, and attaches authenticated user claims to `req.user`.
  */
-export const requireAuth = (req: Request, _res: Response, next: NextFunction): void => {
-  const authHeader = req.headers.authorization;
+export const requireAuth = (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): void => {
+  const accessToken = req.cookies.accessToken;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return next(new UnauthorizedError('Authentication token missing or malformed'));
+  if (!accessToken) {
+    return next(
+      new UnauthorizedError("Authentication token missing or malformed"),
+    );
   }
 
-  const token = authHeader.substring(7).trim();
-
   try {
-    const payload = verifyAccessToken(token);
+    const payload = verifyAccessToken(accessToken);
     req.user = {
       id: payload.userId,
       email: payload.email,
