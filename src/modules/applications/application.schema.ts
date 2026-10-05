@@ -1,25 +1,62 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-const applicationStatusEnum = z.enum(['applied', 'on_hold', 'interview', 'offer', 'rejected']);
-const applicationSourceEnum = z.enum(['linkedin', 'naukri', 'indeed', 'company_site', 'manual', 'other']);
-const employmentTypeEnum = z.enum(['full_time', 'part_time', 'contract', 'internship']);
-const interviewTypeEnum = z.enum(['screening', 'technical', 'behavioral', 'system_design', 'hr', 'other']);
-const interviewStatusEnum = z.enum(['scheduled', 'completed', 'cancelled', 'rescheduled']);
-const fileCategoryEnum = z.enum(['resume', 'cover_letter', 'job_description', 'interview_notes', 'offer_letter', 'other']);
+const applicationStatusEnum = z.enum([
+  "applied",
+  "on_hold",
+  "interview",
+  "offer",
+  "rejected",
+]);
+const applicationSourceEnum = z.enum([
+  "linkedin",
+  "naukri",
+  "indeed",
+  "company_site",
+  "manual",
+  "other",
+]);
+const employmentTypeEnum = z.enum([
+  "full_time",
+  "part_time",
+  "contract",
+  "internship",
+]);
+const interviewTypeEnum = z.enum([
+  "screening",
+  "technical",
+  "behavioral",
+  "system_design",
+  "hr",
+  "other",
+]);
+const interviewStatusEnum = z.enum([
+  "scheduled",
+  "completed",
+  "cancelled",
+  "rescheduled",
+]);
+const fileCategoryEnum = z.enum([
+  "resume",
+  "cover_letter",
+  "job_description",
+  "interview_notes",
+  "offer_letter",
+  "other",
+]);
 
-const optionalUrlSchema = z.string().trim().optional().or(z.literal(''));
-const optionalDateSchema = z.string().trim().optional().or(z.literal(''));
+const optionalUrlSchema = z.string().trim().optional().or(z.literal(""));
+const optionalDateSchema = z.string().trim().optional().or(z.literal(""));
 
 export const createApplicationSchema = z.object({
   body: z.object({
     company: z.object({
-      name: z.string().min(1, 'Company name is required').trim(),
+      name: z.string().min(1, "Company name is required").trim(),
       logoUrl: optionalUrlSchema,
       website: optionalUrlSchema,
       description: z.string().optional(),
     }),
     job: z.object({
-      title: z.string().min(1, 'Job title is required').trim(),
+      title: z.string().min(1, "Job title is required").trim(),
       jobId: z.string().optional(),
       location: z.string().optional(),
       employmentType: employmentTypeEnum.optional(),
@@ -28,13 +65,13 @@ export const createApplicationSchema = z.object({
         .object({
           min: z.number().min(0).optional(),
           max: z.number().min(0).optional(),
-          currency: z.string().default('USD').optional(),
+          currency: z.string().default("USD").optional(),
         })
         .optional(),
     }),
-    source: applicationSourceEnum.default('manual'),
-    status: applicationStatusEnum.default('applied'),
-    dateApplied: optionalDateSchema,
+    source: applicationSourceEnum.default("manual"),
+    status: applicationStatusEnum.default("applied"),
+    dateApplied: z.string().date(),
     nextStep: z
       .object({
         type: z.string().optional(),
@@ -50,8 +87,8 @@ export const updateApplicationSchema = z.object({
     company: z
       .object({
         name: z.string().min(1).trim().optional(),
-        logoUrl: z.string().url().optional().or(z.literal('')),
-        website: z.string().url().optional().or(z.literal('')),
+        logoUrl: z.string().url().optional().or(z.literal("")),
+        website: z.string().url().optional().or(z.literal("")),
         description: z.string().optional(),
       })
       .optional(),
@@ -61,7 +98,7 @@ export const updateApplicationSchema = z.object({
         jobId: z.string().optional(),
         location: z.string().optional(),
         employmentType: employmentTypeEnum.optional(),
-        jobUrl: z.string().url().optional().or(z.literal('')),
+        jobUrl: z.string().url().optional().or(z.literal("")),
         salary: z
           .object({
             min: z.number().min(0).optional(),
@@ -100,8 +137,16 @@ export const queryApplicationsSchema = z.object({
     location: z.string().optional(),
     dateFrom: z.string().optional(),
     dateTo: z.string().optional(),
-    sortBy: z.enum(['dateApplied', 'createdAt', 'updatedAt', 'lastStatusChangedAt', 'companyName']).default('dateApplied'),
-    sortOrder: z.enum(['asc', 'desc']).default('desc'),
+    sortBy: z
+      .enum([
+        "dateApplied",
+        "createdAt",
+        "updatedAt",
+        "lastStatusChangedAt",
+        "companyName",
+      ])
+      .default("dateApplied"),
+    sortOrder: z.enum(["asc", "desc"]).default("desc"),
     page: z.coerce.number().min(1).default(1),
     limit: z.coerce.number().min(1).max(100).default(20),
   }),
@@ -109,37 +154,37 @@ export const queryApplicationsSchema = z.object({
 
 export const addNoteSchema = z.object({
   body: z.object({
-    content: z.string().min(1, 'Note content cannot be empty').trim(),
+    content: z.string().min(1, "Note content cannot be empty").trim(),
   }),
 });
 
 export const updateNoteSchema = z.object({
   body: z.object({
-    content: z.string().min(1, 'Note content cannot be empty').trim(),
+    content: z.string().min(1, "Note content cannot be empty").trim(),
   }),
 });
 
 export const addFileSchema = z.object({
   body: z.object({
-    name: z.string().min(1, 'File name is required').trim(),
-    url: z.string().url('File URL must be a valid URL'),
-    mimeType: z.string().min(1, 'Mime type is required'),
-    size: z.number().min(0, 'File size must be positive'),
-    category: fileCategoryEnum.default('other'),
+    name: z.string().min(1, "File name is required").trim(),
+    url: z.string().url("File URL must be a valid URL"),
+    mimeType: z.string().min(1, "Mime type is required"),
+    size: z.number().min(0, "File size must be positive"),
+    category: fileCategoryEnum.default("other"),
   }),
 });
 
 export const addInterviewSchema = z.object({
   body: z.object({
-    scheduledAt: z.string().datetime('scheduledAt must be a valid ISO date'),
+    scheduledAt: z.string().datetime("scheduledAt must be a valid ISO date"),
     endAt: z.string().datetime().optional(),
-    timezone: z.string().default('UTC').optional(),
-    round: z.string().min(1, 'Round title is required').trim(),
-    type: interviewTypeEnum.default('technical'),
+    timezone: z.string().default("UTC").optional(),
+    round: z.string().min(1, "Round title is required").trim(),
+    type: interviewTypeEnum.default("technical"),
     interviewer: z.string().optional(),
-    meetingUrl: z.string().url().optional().or(z.literal('')),
+    meetingUrl: z.string().url().optional().or(z.literal("")),
     notes: z.string().optional(),
-    status: interviewStatusEnum.default('scheduled'),
+    status: interviewStatusEnum.default("scheduled"),
   }),
 });
 
@@ -151,17 +196,25 @@ export const updateInterviewSchema = z.object({
     round: z.string().min(1).optional(),
     type: interviewTypeEnum.optional(),
     interviewer: z.string().optional(),
-    meetingUrl: z.string().url().optional().or(z.literal('')),
+    meetingUrl: z.string().url().optional().or(z.literal("")),
     notes: z.string().optional(),
     status: interviewStatusEnum.optional(),
   }),
 });
 
-export type CreateApplicationInput = z.infer<typeof createApplicationSchema>['body'];
-export type UpdateApplicationInput = z.infer<typeof updateApplicationSchema>['body'];
-export type UpdateStatusInput = z.infer<typeof updateStatusSchema>['body'];
-export type QueryApplicationsInput = z.infer<typeof queryApplicationsSchema>['query'];
-export type AddNoteInput = z.infer<typeof addNoteSchema>['body'];
-export type AddFileInput = z.infer<typeof addFileSchema>['body'];
-export type AddInterviewInput = z.infer<typeof addInterviewSchema>['body'];
-export type UpdateInterviewInput = z.infer<typeof updateInterviewSchema>['body'];
+export type CreateApplicationInput = z.infer<
+  typeof createApplicationSchema
+>["body"];
+export type UpdateApplicationInput = z.infer<
+  typeof updateApplicationSchema
+>["body"];
+export type UpdateStatusInput = z.infer<typeof updateStatusSchema>["body"];
+export type QueryApplicationsInput = z.infer<
+  typeof queryApplicationsSchema
+>["query"];
+export type AddNoteInput = z.infer<typeof addNoteSchema>["body"];
+export type AddFileInput = z.infer<typeof addFileSchema>["body"];
+export type AddInterviewInput = z.infer<typeof addInterviewSchema>["body"];
+export type UpdateInterviewInput = z.infer<
+  typeof updateInterviewSchema
+>["body"];
