@@ -1,7 +1,6 @@
 import { IUser, UserModel } from '../users/user.model.js';
-import { AuthIdentityModel } from '../auth/auth-identity.model.js';
 import { UpdateProfileInput } from './profile.schema.js';
-import { ConflictError, NotFoundError } from '../../shared/errors/app.error.js';
+import { NotFoundError } from '../../shared/errors/app.error.js';
 
 export interface ProfileCompletionBreakdown {
   personalInfo: boolean;
@@ -36,22 +35,6 @@ export class ProfileService {
 
       if (input.identity.avatarUrl !== undefined) {
         user.identity.avatarUrl = input.identity.avatarUrl || undefined;
-      }
-
-      if (input.identity.email !== undefined && input.identity.email !== user.identity.email) {
-        const existingUser = await UserModel.findOne({
-          'identity.email': input.identity.email,
-          _id: { $ne: user._id },
-        });
-        if (existingUser) {
-          throw new ConflictError('An account with this email address already exists');
-        }
-
-        user.identity.email = input.identity.email;
-        await AuthIdentityModel.updateOne(
-          { userId: user._id, provider: 'password' },
-          { $set: { providerAccountId: input.identity.email } }
-        );
       }
     }
 

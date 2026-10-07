@@ -89,7 +89,7 @@ describe('User Profile & Preferences Integration Tests', () => {
       .patch('/api/v1/profile')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
-        identity: { email: 'not-an-email' },
+        identity: { avatarUrl: 'not-a-url' },
         professional: { yearsOfExperience: -1 },
       });
 
@@ -145,37 +145,17 @@ describe('User Profile & Preferences Integration Tests', () => {
     expect(res.body.data.percentage).toBe(75);
   });
 
-  it('PATCH /api/v1/profile should reject a duplicate email', async () => {
+  it('PATCH /api/v1/profile should ignore email field and preserve existing user email', async () => {
     const res = await request(app)
       .patch('/api/v1/profile')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
-        identity: { email: 'other@example.com' },
+        identity: { name: 'Alex Johnson', email: 'attempted.new.email@example.com' } as any,
       });
 
-    expect(res.status).toBe(409);
-    expect(res.body.success).toBe(false);
-    expect(res.body.error.code).toBe('CONFLICT');
-  });
-
-  it('PATCH /api/v1/profile should keep login working after a unique email change', async () => {
-    const updateRes = await request(app)
-      .patch('/api/v1/profile')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .send({
-        identity: { email: 'alex.johnson@example.com' },
-      });
-
-    expect(updateRes.status).toBe(200);
-    expect(updateRes.body.data.user.identity.email).toBe('alex.johnson@example.com');
-
-    const loginRes = await request(app).post('/api/v1/auth/login').send({
-      email: 'alex.johnson@example.com',
-      password: 'SecurePassword123!',
-    });
-
-    expect(loginRes.status).toBe(200);
-    expect(loginRes.body.data.user.identity.email).toBe('alex.johnson@example.com');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.user.identity.email).toBe('alex@example.com');
   });
 
   it('GET /api/v1/profile should not leak another user\'s profile', async () => {

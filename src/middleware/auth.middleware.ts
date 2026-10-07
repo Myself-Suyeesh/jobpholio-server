@@ -11,7 +11,11 @@ export const requireAuth = (
   _res: Response,
   next: NextFunction,
 ): void => {
-  const accessToken = req.cookies.accessToken;
+  const accessToken =
+    req.cookies?.accessToken ||
+    (req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.split(' ')[1]
+      : undefined);
 
   if (!accessToken) {
     return next(

@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import { ApplicationModel, IApplication, ApplicationStatus, ApplicationSource } from './application.model.js';
 import {
   CreateApplicationInput,
@@ -10,6 +11,15 @@ import {
 } from './application.schema.js';
 import { NotFoundError } from '../../shared/errors/app.error.js';
 
+export interface StatusCounts {
+  all: number;
+  applied: number;
+  on_hold: number;
+  interview: number;
+  offer: number;
+  rejected: number;
+}
+
 export interface PaginatedResult<T> {
   data: T[];
   meta: {
@@ -17,6 +27,7 @@ export interface PaginatedResult<T> {
     limit: number;
     total: number;
     totalPages: number;
+    statusCounts: StatusCounts;
   };
 }
 
@@ -59,44 +70,62 @@ export class ApplicationService {
   }
 
   /**
+   * Convert raw aggregate output [{ _id: "applied", count: 40 }, ...] to StatusCounts object with zero defaults.
+   */
+  private static buildStatusCounts(raw: { _id: string; count: number }[]): StatusCounts {
+    const counts: StatusCounts = { all: 0, applied: 0, on_hold: 0, interview: 0, offer: 0, rejected: 0 };
+    for (const entry of raw) {
+      if (entry._id in counts) {
+        (counts as any)[entry._id] = entry.count;
+      }
+    }
+    counts.all = counts.applied + counts.on_hold + counts.interview + counts.offer + counts.rejected;
+    return counts;
+  }
+
+  /**
    * Fetch a list of applications for an authenticated user with search, filtering, sorting & pagination.
+   * Returns per-status badge counts computed from baseFilter (excludes status) so tab badges
+   * stay stable when the user switches tabs but update when search/source/time filters change.
    */
   public static async listApplications(
     userId: string,
     query: QueryApplicationsInput
   ): Promise<PaginatedResult<IApplication>> {
-    const filter: Record<string, any> = { userId };
-
-    // Status Filter
-    if (query.status) {
-      filter.status = query.status;
-    }
+    // baseFilter: everything EXCEPT status. userId cast to ObjectId so aggregate works too.
+    const baseFilter: Record<string, any> = { userId: new Types.ObjectId(userId) };
 
     // Source Filter
     if (query.source) {
-      filter.source = query.source;
+      baseFilter.source = query.source;
     }
 
     // Location Filter
     if (query.location) {
-      filter['job.location'] = { $regex: query.location, $options: 'i' };
+      baseFilter['job.location'] = { $regex: query.location, $options: 'i' };
     }
 
     // Date Range Filter
     if (query.dateFrom || query.dateTo) {
-      filter.dateApplied = {};
+      baseFilter.dateApplied = {};
       if (query.dateFrom) {
-        filter.dateApplied.$gte = new Date(query.dateFrom);
+        baseFilter.dateApplied.$gte = new Date(query.dateFrom);
       }
       if (query.dateTo) {
-        filter.dateApplied.$lte = new Date(query.dateTo);
+        baseFilter.dateApplied.$lte = new Date(query.dateTo);
       }
     }
 
     // Search query (Company name or Job title)
     if (query.search) {
       const searchRegex = { $regex: query.search, $options: 'i' };
-      filter.$or = [{ 'company.name': searchRegex }, { 'job.title': searchRegex }];
+      baseFilter.$or = [{ 'company.name': searchRegex }, { 'job.title': searchRegex }];
+    }
+
+    // tableFilter: baseFilter + status (used for the actual table rows & total count)
+    const tableFilter: Record<string, any> = { ...baseFilter };
+    if (query.status) {
+      tableFilter.status = query.status;
     }
 
     // Pagination
@@ -116,12 +145,17 @@ export class ApplicationService {
     const sortOrder = query.sortOrder === 'asc' ? 1 : -1;
     const sortOption: Record<string, any> = { [sortField]: sortOrder };
 
-    const [applications, total] = await Promise.all([
-      ApplicationModel.find(filter).sort(sortOption).skip(skip).limit(limit),
-      ApplicationModel.countDocuments(filter),
+    const [applications, total, statusCountsRaw] = await Promise.all([
+      ApplicationModel.find(tableFilter).sort(sortOption).skip(skip).limit(limit),
+      ApplicationModel.countDocuments(tableFilter),
+      ApplicationModel.aggregate<{ _id: string; count: number }>([
+        { $match: baseFilter },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ]),
     ]);
 
     const totalPages = Math.ceil(total / limit) || 1;
+    const statusCounts = this.buildStatusCounts(statusCountsRaw);
 
     return {
       data: applications,
@@ -130,6 +164,7 @@ export class ApplicationService {
         limit,
         total,
         totalPages,
+        statusCounts,
       },
     };
   }
