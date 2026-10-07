@@ -105,6 +105,14 @@ describe('Applications Domain Integration Tests', () => {
       limit: 10,
       total: 1,
       totalPages: 1,
+      statusCounts: {
+        all: 1,
+        applied: 1,
+        on_hold: 0,
+        interview: 0,
+        offer: 0,
+        rejected: 0,
+      },
     });
   });
 

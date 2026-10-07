@@ -311,7 +311,7 @@ Revokes a specific active session by Session ID.
 ### `PATCH /api/v1/profile`
 
 #### Purpose
-Applies partial, deep-nested updates to the user profile without overwriting unspecified sibling fields. Updating `identity.email` keeps the authentication credentials synchronized.
+Applies partial, deep-nested updates to the user profile without overwriting unspecified sibling fields. The user's primary email address is read-only and cannot be updated via this endpoint.
 
 #### Authentication
 **Required** (`Bearer <access_token>`).
@@ -325,7 +325,6 @@ None.
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `identity` | object | **OPTIONAL** | No | — | Personal identity information wrapper object. |
 | `identity.name` | string | **OPTIONAL** | No | 2+ chars | User full name. Min 2 chars. |
-| `identity.email` | string | **OPTIONAL** | No | Valid Email | New unique email. Triggers password identity update. |
 | `identity.avatarUrl` | string | **OPTIONAL** | No | URL or `""` | Avatar image URL. Accepts valid URL or empty string. |
 | `profile` | object | **OPTIONAL** | No | — | Personal profile contact details wrapper. |
 | `profile.phone` | string | **OPTIONAL** | No | String | Phone number string. |
@@ -710,7 +709,7 @@ Updates an existing interview round subdocument.
 ### `GET /api/v1/dashboard`
 
 #### Purpose
-Returns real-time derived analytics, counts, upcoming interviews, and needs-attention application alerts.
+Returns real-time derived analytics, counts, upcoming interviews, recent activity, and needs-attention application alerts.
 
 #### Authentication
 **Required** (`Bearer <access_token>`).
@@ -731,12 +730,48 @@ None.
       "onHold": 2,
       "needsAttentionCount": 1
     },
-    "recentApplications": [],
-    "needsAttentionApplications": [],
-    "upcomingInterviews": []
+    "recentActivity": [
+      {
+        "id": "67a1234567890123456789ab",
+        "company": { "name": "Google", "website": "https://google.com" },
+        "job": { "title": "Senior Software Engineer" },
+        "status": "on_hold",
+        "updatedAt": "2026-10-07T05:00:00.000Z",
+        "latestActivity": {
+          "title": "Status changed to On Hold",
+          "type": "status_changed",
+          "occurredAt": "2026-10-07T05:00:00.000Z"
+        }
+      }
+    ],
+    "needsAttentionApplications": [
+      {
+        "id": "67a1234567890123456789ab",
+        "company": { "name": "Acme Corp" },
+        "job": { "title": "Full Stack Developer" },
+        "status": "on_hold",
+        "daysOnHold": 13,
+        "attentionReason": "On hold for 13 days",
+        "updatedAt": "2026-09-24T00:00:00.000Z"
+      }
+    ],
+    "upcomingInterviews": [
+      {
+        "id": "67c111222333444555666777",
+        "applicationId": "67a1234567890123456789ab",
+        "company": "Google",
+        "position": "Senior Software Engineer",
+        "round": "Technical Screening",
+        "type": "technical",
+        "scheduledAt": "2026-10-10T14:00:00.000Z",
+        "status": "scheduled"
+      }
+    ]
   }
 }
 ```
+
+*Note:* All items in `recentActivity`, `needsAttentionApplications`, and `upcomingInterviews` use string `id` properties instead of `_id`. The full `timeline` array is omitted from `recentActivity` and `needsAttentionApplications` items in this dashboard response to keep payload size lightweight.
 
 ---
 

@@ -5,7 +5,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { createApp } from '../src/app.js';
 import { UserModel } from '../src/modules/users/user.model.js';
 import { ApplicationModel } from '../src/modules/applications/application.model.js';
-import { generateAccessToken } from '../src/modules/auth/jwt.utils.ts';
+import { generateAccessToken } from '../src/modules/auth/jwt.utils.js';
 
 let mongoServer: MongoMemoryServer;
 const app = createApp();
@@ -58,7 +58,7 @@ describe('Dashboard Read-Model Integration Tests (Phase 9)', () => {
     expect(dataKeys).toEqual([
       'metrics',
       'needsAttentionApplications',
-      'recentApplications',
+      'recentActivity',
       'upcomingInterviews',
     ]);
 
@@ -79,7 +79,7 @@ describe('Dashboard Read-Model Integration Tests (Phase 9)', () => {
       onHold: 0,
       needsAttentionCount: 0,
     });
-    expect(res.body.data.recentApplications).toEqual([]);
+    expect(res.body.data.recentActivity).toEqual([]);
     expect(res.body.data.needsAttentionApplications).toEqual([]);
     expect(res.body.data.upcomingInterviews).toEqual([]);
   });
@@ -100,6 +100,7 @@ describe('Dashboard Read-Model Integration Tests (Phase 9)', () => {
       company: { name: 'Company A' },
       job: { title: 'Role A' },
       status: 'applied',
+      timeline: [{ type: 'application_created', title: 'Application submitted for Role A at Company A', occurredAt: new Date() }],
     });
 
     const resB = await request(app)
@@ -115,7 +116,11 @@ describe('Dashboard Read-Model Integration Tests (Phase 9)', () => {
 
     expect(resA.status).toBe(200);
     expect(resA.body.data.metrics.totalApplications).toBe(1);
-    expect(resA.body.data.recentApplications[0].company.name).toBe('Company A');
+    expect(resA.body.data.recentActivity[0].company.name).toBe('Company A');
+    expect(resA.body.data.recentActivity[0]).toHaveProperty('id');
+    expect(resA.body.data.recentActivity[0]).not.toHaveProperty('_id');
+    expect(resA.body.data.recentActivity[0]).not.toHaveProperty('timeline');
+    expect(resA.body.data.recentActivity[0].latestActivity.title).toBe('Application submitted');
   });
 
   it('GET /api/v1/dashboard calculates correct application metrics & counts', async () => {
@@ -177,8 +182,11 @@ describe('Dashboard Read-Model Integration Tests (Phase 9)', () => {
     expect(res.status).toBe(200);
     const { needsAttentionApplications, metrics } = res.body.data;
     expect(needsAttentionApplications).toHaveLength(1);
-    expect(needsAttentionApplications[0]._id).toBe(appOldOnHold._id.toString());
+    expect(needsAttentionApplications[0].id).toBe(appOldOnHold._id.toString());
+    expect(needsAttentionApplications[0]).not.toHaveProperty('_id');
+    expect(needsAttentionApplications[0]).not.toHaveProperty('timeline');
     expect(needsAttentionApplications[0].daysOnHold).toBeGreaterThanOrEqual(14);
+    expect(needsAttentionApplications[0].attentionReason).toContain('On hold for');
     expect(metrics.needsAttentionCount).toBe(1);
     expect(metrics.onHold).toBe(2);
   });
@@ -207,6 +215,7 @@ describe('Dashboard Read-Model Integration Tests (Phase 9)', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.needsAttentionApplications).toHaveLength(1);
     expect(res.body.data.needsAttentionApplications[0].daysOnHold).toBeGreaterThanOrEqual(10);
+    expect(res.body.data.needsAttentionApplications[0].attentionReason).toBe('On hold for 10 days');
     expect(res.body.data.metrics.needsAttentionCount).toBe(1);
   });
 
@@ -249,6 +258,8 @@ describe('Dashboard Read-Model Integration Tests (Phase 9)', () => {
 
     expect(upcomingInterviews).toHaveLength(1);
     expect(upcomingInterviews[0].round).toBe('System Design');
+    expect(upcomingInterviews[0]).toHaveProperty('id');
+    expect(upcomingInterviews[0]).not.toHaveProperty('_id');
     expect(metrics.interviewsScheduled).toBe(1);
   });
 });
